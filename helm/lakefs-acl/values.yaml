@@ -1,0 +1,92 @@
+# Default values for lakefs-acl.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+  repository: lakefs-acl-server
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 9000
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+
+resources: {}
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# ACL Server Specific Configuration
+acl:
+  # Database connection string (default matches docker-compose for dev)
+  # In prod, this should point to a real Postgres or persistent volume
+  databaseConnectionString: "sqlite:////data/acl.db"
+  
+  # Secret Management
+  secrets:
+    create: true # If true, creates a Secret resource with the values below
+    name: ""     # If set, uses this existing secret name instead of creating one
+  
+  # Secrets (will be base64 encoded by the chart if create=true)
+  apiToken: "super-secret-token"
+  encryptionKey: "G0lMOOHFOfb8oUUzLZxHlhjRKryUQQvchzwhBg-kTm4="
+  
+  # Persistence for SQLite (optional, if using SQLite)
+  persistence:
+    enabled: true
+    size: 1Gi
+    accessMode: ReadWriteOnce

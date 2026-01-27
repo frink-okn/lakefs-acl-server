@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:11
+    environment:
+      POSTGRES_USER: lakefs
+      POSTGRES_PASSWORD: lakefs_password
+      POSTGRES_DB: lakefs_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lakefs -d lakefs_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  lakefs:
+    image: treeverse/lakefs:latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    environment:
+      # Database connection
+      LAKEFS_DATABASE_TYPE: postgres
+      LAKEFS_DATABASE_POSTGRES_CONNECTION_STRING: postgresql://lakefs:lakefs_password@postgres:5432/lakefs_db?sslmode=disable
+      # Remote Authentication Configuration
+      LAKEFS_BLOCKSTORE_TYPE: local
+      LAKEFS_AUTH_ENCRYPT_SECRET_KEY: "${LAKEFS_AUTH_ENCRYPT_SECRET_KEY}"
+      LAKEFS_AUTH_UI_CONFIG_RBAC: "simplified"
+      LAKEFS_AUTH_API_ENDPOINT: "http://acl-server:9000/api/v1"
+      LAKEFS_AUTH_API_TOKEN: "${LAKEFS_AUTH_API_TOKEN}"
+      # Disable remote authenticator
+      LAKEFS_AUTH_REMOTE_AUTHENTICATOR_ENABLED: "false"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/_health"]
+      interval: 5s
+      timeout: 5s
+      retries: 510
+
+  acl-server:
+    build:
+      context: .
+    ports:
+      - "9000:9000"
+    environment:
+      # Use SQLite for isolation from lakeFS
+      DATABASE_CONNECTION_STRING: "sqlite:////data/acl.db"
+      ACL_API_TOKEN: "${ACL_API_TOKEN}"
+      ACL_ENCRYPTION_KEY: "${ACL_ENCRYPTION_KEY}" 
+    volumes:
+      - ./acl_data:/data
+    command: uvicorn main:app --host 0.0.0.0 --port 9000
+
+  s5cmd:
+    image: peakcom/s5cmd
+    entrypoint: /bin/sh -c "tail -f /dev/null"
+    environment:
+      AWS_ACCESS_KEY_ID: "placeholder"
+      AWS_SECRET_ACCESS_KEY: "placeholder"
+      S3_ENDPOINT_URL: "http://lakefs:8000"
+    depends_on:
+      - lakefs
+
+volumes:
+  postgres_data:
+

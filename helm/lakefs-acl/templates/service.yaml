@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "lakefs-acl.fullname" . }}
+  labels:
+    {{- include "lakefs-acl.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: 9000
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "lakefs-acl.selectorLabels" . | nindent 4 }}

@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r acl_server/requirements.txt
+          pip install pytest pytest-asyncio httpx
+
+      - name: Run Unit Tests
+        env:
+          DATABASE_CONNECTION_STRING: "sqlite:///:memory:"
+          ACL_API_TOKEN: "test-token"
+        run: |
+          pytest tests/unit
+
+      - name: Start Docker Stack
+        run: |
+          # Use placeholder values for CI start, they get overridden by Setup script or default in compose
+          # But for compose up, we need values if variables are used
+          export LAKEFS_AUTH_API_TOKEN="super-secret-token"
+          export ACL_API_TOKEN="super-secret-token"
+          export ACL_ENCRYPTION_KEY="G0lMOOHFOfb8oUUzLZxHlhjRKryUQQvchzwhBg-kTm4="
+          
+          docker-compose up -d --build
+          
+          echo "Waiting for stack spin-up..."
+          sleep 10
+          docker-compose ps
+
+      - name: Run E2E Tests
+        run: |
+          chmod +x tests/e2e/e2e.sh
+          ./tests/e2e/e2e.sh
