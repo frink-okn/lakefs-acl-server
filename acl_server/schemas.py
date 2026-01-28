@@ -83,6 +83,10 @@ class Credentials(BaseModel):
     access_key_id: str
     creation_date: int
 
+class CredentialsCreation(BaseModel):
+    access_key_id: Optional[str] = None
+    secret_access_key: Optional[str] = None
+
 class CredentialsList(BaseModel):
     pagination: Pagination
     results: List[Credentials]

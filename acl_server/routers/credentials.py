@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from database import get_db
 from models import AccessKey, User
-from schemas import Credentials, CredentialsList, CredentialsWithSecret, Pagination
+from schemas import Credentials, CredentialsList, CredentialsWithSecret, Pagination, CredentialsCreation
 from typing import List, Optional
 import time
 import secrets
@@ -84,6 +84,7 @@ def list_user_credentials(
 @router.post("/users/{userId}/credentials", response_model=CredentialsWithSecret, status_code=status.HTTP_201_CREATED)
 def create_credentials(
     userId: str, 
+    credentials_in: Optional[CredentialsCreation] = None,
     access_key: Optional[str] = Query(None), 
     secret_key: Optional[str] = Query(None),
     db: Session = Depends(get_db)
@@ -92,8 +93,16 @@ def create_credentials(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
         
-    ak = access_key or generate_key_id()
-    sk = secret_key or generate_secret_key()
+    # Prefer body params, fallback to query params (backward compatibility)
+    ak = None
+    sk = None
+    
+    if credentials_in:
+        ak = credentials_in.access_key_id
+        sk = credentials_in.secret_access_key
+        
+    ak = ak or access_key or generate_key_id()
+    sk = sk or secret_key or generate_secret_key()
     
     # Encrypt the secret before storing
     encrypted_sk = security.encrypt_secret(sk)
